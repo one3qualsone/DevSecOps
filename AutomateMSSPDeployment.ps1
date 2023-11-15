@@ -1,16 +1,54 @@
 # Set Error Action Preference
 $ErrorActionPreference = "Stop"
 
-# Set These Variables:
-$subscriptionId = "SubscriptionID"
-$customerName = "Customer" # Enter customer name
-$location = "Location" # Enter Location (e.g UKSouth)
+# Ask for user input
+function Get-UserInput {
+    $subscriptionId = Read-Host -Prompt "Enter your Azure Subscription ID"
+    $customerName = Read-Host -Prompt "Enter the Customer Name"
+    $location = Read-Host -Prompt "Enter the Azure Region (e.g., UKSouth)"
+
+    $userInfo = @{
+        SubscriptionId = $subscriptionId
+        CustomerName = $customerName
+        Location = $location
+    }
+
+    return $userInfo
+}
+
+# Confirm user input
+function Confirm-UserInput($userInfo) {
+    Write-Host "Here is your inputted information:"
+    Write-Host "Subscription ID: $($userInfo.SubscriptionId)"
+    Write-Host "Customer Name: $($userInfo.CustomerName)"
+    Write-Host "Location: $($userInfo.Location)"
+
+    $confirmation = Read-Host "Do you want to proceed? (Y/N)"
+    return $confirmation -eq "Y" -or $confirmation -eq "y"
+}
+
+# Ask for confirmatrion
+do {
+    $userInfo = Get-UserInput
+
+    $confirmation = Confirm-UserInput -userInfo $userInfo
+    if (-not $confirmation) {
+        Write-Host "Restarting the script..."
+    }
+} while (-not $confirmation)
+
+# If confirmed, proceed with deployment
+$subscriptionId = $userInfo.SubscriptionId
+$customerName = $userInfo.CustomerName
+$location = $userInfo.Location
+
+
 $sku = "pergb2018"
 $resourceGroupName = "MSSP-" + $customerName + "-ResourceGroup-Sentinel" 
 $workspaceName = "MSSP-" + $customerName + "Workspace-Sentinel"
 $sentinelName = "MSSP-" + $customerName + "-Sentinel"
 
-# Set the subscription context
+# Set subscription context
 az account set --subscription $subscriptionId
 
 try {
@@ -18,7 +56,7 @@ try {
     Write-Host "Creating resource group..."
     az group create --name $resourceGroupName --location $location
 
-# Define the ARM Template
+# Define Deployment ARM Template
 $schema = '$schema'
 $armTemplate = @"
 {
