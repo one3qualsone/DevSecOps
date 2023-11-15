@@ -42,12 +42,27 @@ $subscriptionId = $userInfo.SubscriptionId
 $customerName = $userInfo.CustomerName
 $location = $userInfo.Location
 
+# Function to check and register resource providers
+function CheckAndRegisterResourceProviders {
+    $requiredProviders = @("Microsoft.OperationsManagement", "Microsoft.SecurityInsights")
+
+    foreach ($provider in $requiredProviders) {
+        $state = (az provider show --namespace $provider --query "registrationState" -o tsv)
+        if ($state -ne "Subscription is Registered. Continuing with resource deployment...") {
+            Write-Host "Subscription is not Registered. Registering resource provider $provider. This may take a few minutes..."
+            az provider register --namespace $provider
+            # Wait for the registration to complete
+            Start-Sleep -Seconds 30
+        }
+    }
+}
+
+CheckAndRegisterResourceProviders
 
 $sku = "pergb2018"
 $resourceGroupName = "MSSP-" + $customerName + "-ResourceGroup-Sentinel" 
 $workspaceName = "MSSP-" + $customerName + "Workspace-Sentinel"
 $sentinelName = "MSSP-" + $customerName + "-Sentinel"
-
 # Set subscription context
 az account set --subscription $subscriptionId
 
