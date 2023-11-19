@@ -1,3 +1,5 @@
+# NOTE - Deploy this script directly on the Azure CLI. Errors can occur with ARM template deployment and functionality if done via VS Code CLI etc...
+
 # Set Error Action Preference
 $ErrorActionPreference = "Stop"
 
@@ -47,22 +49,26 @@ function CheckAndRegisterResourceProviders {
     $requiredProviders = @("Microsoft.OperationsManagement", "Microsoft.SecurityInsights")
 
     foreach ($provider in $requiredProviders) {
-        $state = (az provider show --namespace $provider --query "registrationState" -o tsv)
-        if ($state -ne "Subscription is Registered. Continuing with resource deployment...") {
-            Write-Host "Subscription is not Registered. Registering resource provider $provider. This may take a few minutes..."
+        $state = az provider show --namespace $provider --query "registrationState" -o tsv
+        if ($state -ne "Registered") {
+            Write-Host "Resource provider $provider is not registered. Registering now..."
             az provider register --namespace $provider
             # Wait for the registration to complete
             Start-Sleep -Seconds 30
+        } else {
+            Write-Host "Resource provider $provider is already registered."
         }
     }
 }
 
 CheckAndRegisterResourceProviders
 
+# Set Variables
 $sku = "pergb2018"
 $resourceGroupName = "MSSP-" + $customerName + "-ResourceGroup-Sentinel" 
-$workspaceName = "MSSP-" + $customerName + "Workspace-Sentinel"
 $sentinelName = "MSSP-" + $customerName + "-Sentinel"
+$customerTag = "MSSP-" + $customerName + "-Tag"
+
 # Set subscription context
 az account set --subscription $subscriptionId
 
@@ -145,9 +151,21 @@ $armTemplate = @"
     # Clean up - remove the ARM Template file
     Remove-Item $templateFile
 }
+
 catch {
     Write-Host "An error occurred: $_"
 }
 finally {
-    Write-Host "Script execution completed."
+    Write-Host "Deployment completed. Exporting variables to be used by Rule deployment script..."
 }
+$scriptVariables = @{
+    SubscriptionId = $subscriptionId
+    CustomerName = $customerName
+    Location = $location
+    Sku = $sku
+    ResourceGroupName = $resourceGroupName
+    SentinelName = $sentinelName 
+    CustomerTag = $customerTag 
+}
+
+$scriptVariables | ConvertTo-Json | Set-Content -Path 'scriptVariables.json'
