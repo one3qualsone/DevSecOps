@@ -2,7 +2,7 @@
 
 This repo has been setup to share all things Development Security Operations related.
 
-Manually create a subscription (to the best of my knowladge, no way to automate creation of subscriptions)
+Manually create a subscription (to the best of my knowledge, no way to automate creation of subscriptions)
 - Set the Customer Subscription - MSSP-<CustomerName>-Subscription
 - Set the Subscription Tag - MSSP-<CusotmerName>-Tag : MSSP-<CustomerName>-Subscription
 
