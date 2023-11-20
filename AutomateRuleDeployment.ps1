@@ -70,9 +70,106 @@ catch {
 finally {
     Write-Host "Tagging process completed."
 }
+$schema = '$schema'
+$closeIncidentsAutomationRule = @"
+{
+    `"$schema`": `"https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#`",
+    `"contentVersion`": `"1.0.0.0`",
+    `"resources`": [
+      {
+        `"type`": `"Microsoft.OperationalInsights/workspaces/providers/automationRules`",
+        `"apiVersion`": `"2023-02-01`",
+        `"name`": `"[concat(parameters('workspaceName'), '/Microsoft.SecurityInsights/', parameters('automationRuleName'))]`",
+        `"location`": `"[parameters('location')]`",
+        `"properties`": {
+          `"displayName`": `"MSSP - Close All Informational Incidents`",
+          `"order`": 996,
+          `"triggeringLogic`": {
+            `"isEnabled`": true,
+            `"triggersOn`": `"Incidents`",
+            `"triggersWhen`": `"Created`",
+            `"conditions`": [
+              {
+                `"conditionType`": `"Property`",
+                `"conditionProperties`": {
+                  `"propertyName`": `"IncidentSeverity`",
+                  `"operator`": `"Equals`",
+                  `"propertyValues`": [
+                    `"Informational`"
+                  ]
+                }
+              }
+            ]
+          },
+          `"actions`": [
+            {
+              `"order`": 1,
+              `"actionType`": `"ModifyProperties`",
+              `"actionConfiguration`": {
+                `"severity`": null,
+                `"status`": `"Closed`",
+                `"classification`": `"BenignPositive`",
+                `"classificationReason`": `"SuspiciousButExpected`",
+                `"classificationComment`": `"Informational Security Incidents are used for dashboards and reporting purposes.`",
+                `"owner`": null,
+                `"labels`": null
+              }
+            }
+          ]
+        }
+      }
+    ],
+    `"parameters`": {
+      `"workspaceName`": {
+        `"type`": `"string`",
+        `"metadata`": {
+          `"description`": `"Name of the Azure Sentinel workspace`"
+        }
+      },
+      `"automationRuleName`": {
+        `"type`": `"string`",
+        `"defaultValue`": `"MSSP - Close All Informational Incidents`",
+        `"metadata`": {
+          `"description`": `"Name for the automation rule`"
+        }
+      },
+      `"location`": {
+        `"type`": `"string`",
+        `"metadata`": {
+          `"description`": `"Location for all resources.`"
+        }
+      }
+    }
+  }
+"@
+$templateFile = "AutomationRule-CloseInformaitonalIncidents.json"
+    $closeIncidentsAutomationRule | Out-File -FilePath $templateFile
 
+    # Deploy the ARM Template
+    Write-Host "Deploying Automation Rule: 'MSSP - Close All Informational Incidents'..."
+    try {
+        $deploymentParameters = @{
+            "workspaceName" = $sentinelName
+            "location" = $location
+        }
+        $deploymentOutput = New-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName `
+                                                        -TemplateFile $templateFile `
+                                                        -TemplateParameterObject $deploymentParameters
 
-
+    # Analyze the deployment output
+    if ($deploymentOutput.ProvisioningState -eq "Succeeded") {
+        Write-Host "Deployment succeeded."
+    } else {
+        Write-Host "Deployment failed."
+        Write-Host $deploymentOutput
+    }
+} catch {
+    Write-Host "An error occurred during deployment: $_"
+}
+finally {
+    # Clean up - remove the ARM Template file
+    Remove-Item -Path $templateFile -Force
+}
 
 
 
